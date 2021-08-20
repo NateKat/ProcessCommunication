@@ -60,7 +60,7 @@ class VecGenServer(CommunicationProc):
         np_socket = NumpySocket()
 
         logger.info("starting server, waiting for client")
-        np_socket.startServer(self.port)
+        np_socket.startServer(self.ip, self.port)
 
         for vec in data_vector_gen(vector_size=5):
             logger.info("sending numpy array:")

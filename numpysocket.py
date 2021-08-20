@@ -4,7 +4,7 @@ import numpy as np
 from io import BytesIO
 
 
-class NumpySocket():
+class NumpySocket:
     def __init__(self):
         self.address = 0
         self.port = 0
@@ -23,8 +23,8 @@ class NumpySocket():
 
         self.close()
 
-    def startServer(self, port):
-        self.address = ''
+    def startServer(self, address, port):
+        self.address = address
         self.port = port
 
         self.socket.bind((self.address, self.port))
