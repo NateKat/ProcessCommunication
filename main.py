@@ -1,7 +1,8 @@
 import numpy as np
 import multiprocessing as mp
 import logging
-import socket
+from numpysocket import NumpySocket
+from time import sleep
 
 logger = mp.log_to_stderr(logging.DEBUG)
 
@@ -30,21 +31,25 @@ class AnalyseClient(CommunicationProc):
         super().__init__(ip, port)
 
     def run(self):
-        print("client sent 1")
-        client_socket = socket.socket()
-
-        client_socket.connect((self.ip, self.port))
-
-        # receive data from the server
+        np_socket = NumpySocket()
         while True:
-            data = client_socket.recv(1024)
-            if data:
-                print(data)
-            else:
+            try:
+                np_socket.startClient(self.ip, self.port)
+                logger.info("connected to server")
                 break
-        # close the connection
-        client_socket.close()
-        print("client sent 2")
+            except ConnectionRefusedError:
+                logger.warning(f'Connection failed, make sure `server` is running.')
+                sleep(1)
+                continue
+
+        frame = np_socket.receive(socket_buffer_size=16)  # buffer size must be smaller than vector size
+        logger.info("array received:")
+        logger.info(frame)
+
+        try:
+            np_socket.close()
+        except OSError:
+            logging.error("server already disconnected")
 
 
 class VecGenServer(CommunicationProc):
@@ -52,18 +57,24 @@ class VecGenServer(CommunicationProc):
         super().__init__(ip, port)
 
     def run(self):
-        #  server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket = socket.socket()
-        server_socket.bind((self.ip, self.port))
-        server_socket.listen(1)  # one connection allowed
+        np_socket = NumpySocket()
 
-        logger.debug("Server listening")
-        print("Server listening!")
+        logger.info("starting server, waiting for client")
+        np_socket.startServer(self.port)
 
-        c, address = server_socket.accept()
-        logger.debug("{u} connected".format(u=address))
-        c.send('OK'.encode())
-        c.close()
+        for vec in data_vector_gen(vector_size=5):
+            logger.info("sending numpy array:")
+            logger.info(vec)
+            try:
+                np_socket.send(vec)
+            except ConnectionResetError:
+                logging.error("client disconnected")
+                break
+        logger.info("closing connection")
+        try:
+            np_socket.close()
+        except OSError:
+            logging.error("client already disconnected")
 
 
 if __name__ == '__main__':
