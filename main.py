@@ -51,7 +51,8 @@ class AnalyseClient(CommunicationProc):
             logging.error("server already disconnected")
 
     def data_handler(self):
-        self.stack_matrix(5)
+        matrix = self.stack_matrix(5)
+        mean, std = self.matrix_analytics(matrix)
 
     def stack_matrix(self, mat_col=100):
         matrix = self.np_socket.receive(socket_buffer_size=16)  # buffer size must be smaller than vector size
@@ -61,6 +62,12 @@ class AnalyseClient(CommunicationProc):
             logger.debug(frame)
             matrix = np.vstack((matrix, frame))
         logger.debug(matrix)
+        return matrix
+
+    def matrix_analytics(self, matrix):
+        r1 = np.mean(matrix, axis=0)
+        r2 = np.std(matrix, axis=0)
+        return r1, r2
 
 
 class VecGenServer(CommunicationProc):
