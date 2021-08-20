@@ -4,7 +4,7 @@ import logging
 from numpysocket import NumpySocket
 from time import sleep
 
-logger = mp.log_to_stderr(logging.DEBUG)
+logger = mp.log_to_stderr(logging.INFO)
 
 
 def data_vector_gen(seed=100, vector_size=50):
@@ -24,6 +24,7 @@ class CommunicationProc(mp.Process):
         super().__init__()
         self.ip = ip
         self.port = port
+        self.np_socket = None
 
 
 class AnalyseClient(CommunicationProc):
@@ -31,25 +32,35 @@ class AnalyseClient(CommunicationProc):
         super().__init__(ip, port)
 
     def run(self):
-        np_socket = NumpySocket()
+        self.np_socket = NumpySocket()
         while True:
             try:
-                np_socket.startClient(self.ip, self.port)
-                logger.info("connected to server")
+                self.np_socket.startClient(self.ip, self.port)
+                logger.debug("connected to server")
                 break
             except ConnectionRefusedError:
                 logger.warning(f'Connection failed, make sure `server` is running.')
                 sleep(1)
                 continue
 
-        frame = np_socket.receive(socket_buffer_size=16)  # buffer size must be smaller than vector size
-        logger.info("array received:")
-        logger.info(frame)
+        self.data_handler()
 
         try:
-            np_socket.close()
+            self.np_socket.close()
         except OSError:
             logging.error("server already disconnected")
+
+    def data_handler(self):
+        self.stack_matrix(5)
+
+    def stack_matrix(self, mat_col=100):
+        matrix = self.np_socket.receive(socket_buffer_size=16)  # buffer size must be smaller than vector size
+        for i in range(mat_col - 1):
+            frame = self.np_socket.receive(socket_buffer_size=16)  # buffer size must be smaller than vector size
+            logger.debug("array received:")
+            logger.debug(frame)
+            matrix = np.vstack((matrix, frame))
+        logger.debug(matrix)
 
 
 class VecGenServer(CommunicationProc):
@@ -57,22 +68,21 @@ class VecGenServer(CommunicationProc):
         super().__init__(ip, port)
 
     def run(self):
-        np_socket = NumpySocket()
-
-        logger.info("starting server, waiting for client")
-        np_socket.startServer(self.ip, self.port)
+        self.np_socket = NumpySocket()
+        logger.debug("starting server, waiting for client")
+        self.np_socket.startServer(self.ip, self.port)
 
         for vec in data_vector_gen(vector_size=5):
-            logger.info("sending numpy array:")
-            logger.info(vec)
+            logger.debug("sending numpy array:")
+            logger.debug(vec)
             try:
-                np_socket.send(vec)
+                self.np_socket.send(vec)
             except ConnectionResetError:
                 logging.error("client disconnected")
                 break
         logger.info("closing connection")
         try:
-            np_socket.close()
+            self.np_socket.close()
         except OSError:
             logging.error("client already disconnected")
 
