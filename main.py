@@ -18,11 +18,16 @@ def data_vector_gen(seed=100, vector_size=50):
         yield np.random.normal(size=vector_size)
 
 
-class AnalyseClient(mp.Process):
+class CommunicationProc(mp.Process):
     def __init__(self, ip='127.0.0.1', port=12345):
-        mp.Process.__init__(self)
+        super().__init__()
         self.ip = ip
         self.port = port
+
+
+class AnalyseClient(CommunicationProc):
+    def __init__(self, ip, port):
+        super().__init__(ip, port)
 
     def run(self):
         print("client sent 1")
@@ -42,11 +47,9 @@ class AnalyseClient(mp.Process):
         print("client sent 2")
 
 
-class VecGenServer(mp.Process):
-    def __init__(self, ip='127.0.0.1', port=12345):
-        mp.Process.__init__(self)
-        self.ip = ip
-        self.port = port
+class VecGenServer(CommunicationProc):
+    def __init__(self, ip, port):
+        super().__init__(ip, port)
 
     def run(self):
         #  server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
