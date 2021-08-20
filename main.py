@@ -18,45 +18,60 @@ def data_vector_gen(seed=100, vector_size=50):
         yield np.random.normal(size=vector_size)
 
 
-class Analyser(mp.Process):
-    def __init__(self, socket_obj):
+class AnalyseClient(mp.Process):
+    def __init__(self, ip='127.0.0.1', port=12345):
         mp.Process.__init__(self)
-        self.socket = socket_obj
+        self.ip = ip
+        self.port = port
 
     def run(self):
-        self.socket.bind(('', 9090))
-        self.socket.listen(5)
+        print("client sent 1")
+        client_socket = socket.socket()
+
+        client_socket.connect((self.ip, self.port))
+
+        # receive data from the server
+        while True:
+            data = client_socket.recv(1024)
+            if data:
+                print(data)
+            else:
+                break
+        # close the connection
+        client_socket.close()
+        print("client sent 2")
+
+
+class VecGenServer(mp.Process):
+    def __init__(self, ip='127.0.0.1', port=12345):
+        mp.Process.__init__(self)
+        self.ip = ip
+        self.port = port
+
+    def run(self):
+        #  server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket = socket.socket()
+        server_socket.bind((self.ip, self.port))
+        server_socket.listen(1)  # one connection allowed
+
         logger.debug("Server listening")
         print("Server listening!")
 
-
-class Generator(mp.Process):
-    def __init__(self, socket_obj):
-        mp.Process.__init__(self)
-        self.socket = socket_obj
-
-    def run(self):
-        while True:
-            client, address = self.socket.accept()
-            logger.debug("{u} connected".format(u=address))
-            client.send("OK")
-            print("client sent")
-            client.close()
+        c, address = server_socket.accept()
+        logger.debug("{u} connected".format(u=address))
+        c.send('OK'.encode())
+        c.close()
 
 
 if __name__ == '__main__':
+    default_ip, default_port = '127.0.0.1', 50066
 
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ps = VecGenServer(default_ip, default_port)
+    pc = AnalyseClient(default_ip, default_port)
 
-    p1 = mp.Process(target=Generator, args=(server_socket,))
-    p2 = mp.Process(target=Analyser, args=(server_socket,))
+    ps.start()
+    pc.start()
 
-    p1.start()
-    p2.start()
-
-    # starting Processes here parallel by using start function.
-    p1.join()
-    # this join() will wait until the calc_square() function is finished.
-    p2.join()
-    # this join() will wait unit the calc_cube() function is finished.
+    pc.join()
+    ps.join()
     print("Successes!")
