@@ -95,12 +95,12 @@ class VecGenServer(CommunicationProc):
             try:
                 self.send_vector(vec)
             except RateLimitException:
-                    continue
-            except ConnectionResetError:
+                continue
+            except (ConnectionResetError, ConnectionAbortedError):
                 logging.error("client disconnected")
                 break
 
-    @limits(calls=1000, period=1)
+    @limits(calls=1, period=0.001)
     def send_vector(self, vector):
         self.np_socket.send(vector)
 
