@@ -3,6 +3,7 @@ import multiprocessing as mp
 import logging
 from numpysocket import NumpySocket
 from time import sleep
+from ratelimit import limits, RateLimitException
 
 logger = mp.log_to_stderr(logging.INFO)
 
@@ -43,7 +44,8 @@ class AnalyseClient(CommunicationProc):
                 sleep(1)
                 continue
 
-        self.data_handler()
+        for i in range(10):
+            self.data_handler()
 
         try:
             self.np_socket.close()
@@ -51,7 +53,7 @@ class AnalyseClient(CommunicationProc):
             logging.error("server already disconnected")
 
     def data_handler(self):
-        matrix = self.stack_matrix(5)
+        matrix = self.stack_matrix()
         mean, std = self.matrix_analytics(matrix)
 
     def stack_matrix(self, mat_col=100):
@@ -79,19 +81,28 @@ class VecGenServer(CommunicationProc):
         logger.debug("starting server, waiting for client")
         self.np_socket.startServer(self.ip, self.port)
 
-        for vec in data_vector_gen(vector_size=5):
-            logger.debug("sending numpy array:")
-            logger.debug(vec)
-            try:
-                self.np_socket.send(vec)
-            except ConnectionResetError:
-                logging.error("client disconnected")
-                break
+        self.send_data()
         logger.info("closing connection")
         try:
             self.np_socket.close()
         except OSError:
             logging.error("client already disconnected")
+
+    def send_data(self):
+        for vec in data_vector_gen(vector_size=5):
+            logger.debug("sending numpy array:")
+            logger.debug(vec)
+            try:
+                self.send_vector(vec)
+            except RateLimitException:
+                    continue
+            except ConnectionResetError:
+                logging.error("client disconnected")
+                break
+
+    @limits(calls=1000, period=1)
+    def send_vector(self, vector):
+        self.np_socket.send(vector)
 
 
 if __name__ == '__main__':
