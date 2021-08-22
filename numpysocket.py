@@ -86,7 +86,7 @@ class NumpySocket:
 
         logging.debug("frame sent")
 
-    def receive_frame_buffer(self, socket_buffer_size=1024):
+    def receive_vector_frame(self, socket_buffer_size=1024):
         socket = self.socket
         if (self.client_connection):
             socket = self.client_connection
@@ -116,8 +116,7 @@ class NumpySocket:
 
         return frameBuffer
 
-    def receive(self, socket_buffer_size=1024):
-        frameBuffer = self.receive_frame_buffer(socket_buffer_size)
-        frame = np.load(BytesIO(frameBuffer))['frame']
+    def frame_to_vector(self, frame_buffer: bytearray):
+        frame = np.load(BytesIO(frame_buffer))['frame']
         logging.debug("frame received")
         return frame

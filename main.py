@@ -44,25 +44,32 @@ class AnalyseClient(CommunicationProc):
                 sleep(1)
                 continue
 
-        for i in range(3):
+        for i in range(20):
             self.data_handler()
         try:
             self.np_socket.close()
         except OSError:
             logger.error("server already disconnected")
 
-    def data_handler(self):
-        matrix = self.stack_matrix()
-        mean, std = self.matrix_analytics(matrix)
+    @timer
+    def accumulate_frames(self, num_of_frames: int, frame_list: list) -> list:
+        for i in range(num_of_frames):
+            frame_list.append(self.np_socket.receive_vector_frame(16))
+        return frame_list
 
-    def stack_matrix(self, mat_col=100):  # each matrix should be 100 vectors long
-        matrix = self.np_socket.receive(16)  # 16 - buffer size must be smaller than vector size
-        for i in range(mat_col - 1):
-            frame = self.np_socket.receive(16)  # 16 - buffer size must be smaller than vector size
-            logger.debug("array received:")
-            logger.debug(frame)
-            matrix = np.vstack((matrix, frame))
+    def frames_to_matrix(self, l_frames: list) -> np.ndarray:
+        matrix = self.np_socket.frame_to_vector(l_frames[0])
+        for i in range(1, len(l_frames)):
+            np.vstack((matrix, self.np_socket.frame_to_vector(l_frames[i])))
+        return matrix
+
+    def data_handler(self, mat_col=100):  # each matrix should be 100 vectors long
+        l_frames, time = self.accumulate_frames(mat_col, [])
+        logger.info(f"Received {mat_col} vectors in {time}  seconds")
+        matrix = self.frames_to_matrix(l_frames)
+        logger.debug("matrix received:")
         logger.debug(matrix)
+        mean, std = self.matrix_analytics(matrix)
         return matrix
 
     def matrix_analytics(self, matrix):
