@@ -49,7 +49,7 @@ class AnalyseClient(CommunicationProc):
         try:
             self.np_socket.close()
         except OSError:
-            logging.error("server already disconnected")
+            logger.error("server already disconnected")
 
     def data_handler(self):
         matrix = self.stack_matrix()
@@ -89,7 +89,7 @@ class VecGenServer(CommunicationProc):
         try:
             self.np_socket.close()
         except OSError:
-            logging.error("client already disconnected")
+            logger.error("client already disconnected")
 
     def send_data(self):
         while True:
@@ -99,7 +99,7 @@ class VecGenServer(CommunicationProc):
                 _, time = self.send_vector(data_vector_gen().__next__())
                 logger.info(f"sent 1000 vectors in {time!r}  seconds")
             except (ConnectionResetError, ConnectionAbortedError):
-                logging.error("client disconnected")
+                logger.error("client disconnected")
                 break
 
     @timer
