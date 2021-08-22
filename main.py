@@ -29,8 +29,14 @@ class CommunicationProc(mp.Process):
 
 
 class AnalyseClient(CommunicationProc):
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, columns_in_matrix=100):
         super().__init__(ip, port)
+        self.receive_rates = []
+        self.columns_in_matrix = columns_in_matrix
+
+    @property
+    def current_freq(self) -> float:
+        return self.columns_in_matrix / float(self.receive_rates[-1]) if self.receive_rates else 0
 
     def run(self):
         self.np_socket = NumpySocket()
@@ -51,6 +57,11 @@ class AnalyseClient(CommunicationProc):
         except OSError:
             logger.error("server already disconnected")
 
+    def data_handler(self):
+        for i in range(10):
+            self.matrix_handler()
+        print(f"Receive frequency:{self.current_freq:.2f}[Hz]")
+
     @timer
     def accumulate_frames(self, num_of_frames: int, frame_list: list) -> list:
         for i in range(num_of_frames):
@@ -63,9 +74,10 @@ class AnalyseClient(CommunicationProc):
             np.vstack((matrix, self.np_socket.frame_to_vector(l_frames[i])))
         return matrix
 
-    def data_handler(self, mat_col=100):  # each matrix should be 100 vectors long
-        l_frames, time = self.accumulate_frames(mat_col, [])
-        logger.info(f"Received {mat_col} vectors in {time}  seconds")
+    def matrix_handler(self):
+        l_frames, time = self.accumulate_frames(self.columns_in_matrix, [])
+        logger.debug(f"Received {self.columns_in_matrix} vectors in {time}  seconds")
+        self.receive_rates.append(time)
         matrix = self.frames_to_matrix(l_frames)
         logger.debug("matrix received:")
         logger.debug(matrix)
@@ -104,7 +116,7 @@ class VecGenServer(CommunicationProc):
             #logger.debug(vec)
             try:
                 _, time = self.send_vector(data_vector_gen().__next__())
-                logger.info(f"sent 1000 vectors in {time!r}  seconds")
+                logger.info(f"Send frequency is {1000 / time:.2f}[Hz]")
             except (ConnectionResetError, ConnectionAbortedError):
                 logger.error("client disconnected")
                 break
