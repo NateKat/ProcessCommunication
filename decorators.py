@@ -1,8 +1,10 @@
 import functools
 import time
-import logging
 from math import floor
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def timer(func):
@@ -13,7 +15,7 @@ def timer(func):
         value = func(*args, **kwargs)
         end_time = time.perf_counter()
         run_time = end_time - start_time
-        logging.debug(f"Finished {func.__name__!r} in {run_time:.4f} secs")
+        logger.debug(f"Finished {func.__name__!r} in {run_time:.4f} secs")
         return value, run_time
     return wrapper_timer
 
@@ -69,7 +71,7 @@ class ThrottleDecorator(object):
                 if self.run_time / self.num_calls < self.freq:
                     time.sleep(self.num_calls * self.freq - self.run_time)
 
-            logging.debug(f"Finished {func.__name__!r} in average of {self.run_time / self.num_calls:.3f} secs")
-            logging.debug(f"Finished {func.__name__!r} in average of {self.run_time / self.num_calls:.3f} secs")
+            logger.debug(f"Finished {func.__name__!r} in average of {self.run_time / self.num_calls:.3f} secs")
+            logger.debug(f"Finished {func.__name__!r} in average of {self.run_time / self.num_calls:.3f} secs")
             return value
         return wrapper

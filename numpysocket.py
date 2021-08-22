@@ -1,7 +1,9 @@
 import socket
-import logging
 import numpy as np
 from io import BytesIO
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class NumpySocket:
@@ -19,7 +21,7 @@ class NumpySocket:
         except (AttributeError, OSError):
             pass
         except Exception as e:
-            logging.error("error when deleting socket", e)
+            logger.error("error when deleting socket", e)
 
         self.close()
 
@@ -30,18 +32,18 @@ class NumpySocket:
         self.socket.bind((self.address, self.port))
         self.socket.listen(1)
 
-        logging.debug("waiting for a connection")
+        logger.debug("waiting for a connection")
         self.client_connection, self.client_address = self.socket.accept()
-        logging.debug(f"connected to: {self.client_address[0]}")
+        logger.debug(f"connected to: {self.client_address[0]}")
 
     def startClient(self, address, port):
         self.address = address
         self.port = port
         try:
             self.socket.connect((self.address, self.port))
-            logging.debug(f"Connected to {self.address} on port {self.port}")
+            logger.debug(f"Connected to {self.address} on port {self.port}")
         except socket.error as err:
-            logging.error(f"Connection to {self.address} on port {self.port} failed")
+            logger.error(f"Connection to {self.address} on port {self.port} failed")
             raise
 
     def close(self):
@@ -81,10 +83,10 @@ class NumpySocket:
         try:
             socket.sendall(out)
         except BrokenPipeError:
-            logging.error("connection broken")
+            logger.error("connection broken")
             raise
 
-        logging.debug("frame sent")
+        logger.debug("frame sent")
 
     def receive_vector_frame(self, socket_buffer_size=1024):
         socket = self.socket
@@ -118,5 +120,5 @@ class NumpySocket:
 
     def frame_to_vector(self, frame_buffer: bytearray):
         frame = np.load(BytesIO(frame_buffer))['frame']
-        logging.debug("frame received")
+        logger.debug("frame received")
         return frame
