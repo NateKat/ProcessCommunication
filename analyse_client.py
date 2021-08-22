@@ -3,9 +3,9 @@ import numpy as np
 from numpysocket import NumpySocket
 from decorators import timer
 from time import sleep
-import logging
+from logger import create_logger
 
-logger = logging.getLogger(__name__)
+logger = create_logger()
 
 
 class AnalyseClient(CommunicationProc):

@@ -2,9 +2,9 @@ import functools
 import time
 from math import floor
 import sys
-import logging
+from logger import create_logger
 
-logger = logging.getLogger(__name__)
+logger = create_logger()
 
 
 def timer(func):

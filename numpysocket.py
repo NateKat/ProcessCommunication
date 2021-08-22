@@ -1,9 +1,9 @@
 import socket
 import numpy as np
 from io import BytesIO
-import logging
+from logger import create_logger
 
-logger = logging.getLogger(__name__)
+logger = create_logger()
 
 
 class NumpySocket:

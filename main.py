@@ -1,6 +1,5 @@
 from app import run, init
 import sys
-import logging
 
 
 def main():
@@ -9,5 +8,4 @@ def main():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
     main()

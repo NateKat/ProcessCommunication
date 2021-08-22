@@ -2,9 +2,9 @@ from communication_proc import CommunicationProc
 from numpysocket import NumpySocket
 import numpy as np
 from decorators import timer, ThrottleDecorator
-import logging
+from logger import create_logger
 
-logger = logging.getLogger(__name__)
+logger = create_logger()
 
 
 class VecGenServer(CommunicationProc):
