@@ -3,7 +3,7 @@ import multiprocessing as mp
 import logging
 from numpysocket import NumpySocket
 from time import sleep
-from ratelimit import limits, RateLimitException
+from decorators import timer, ThrottleDecorator
 
 logger = mp.log_to_stderr(logging.INFO)
 
@@ -44,9 +44,8 @@ class AnalyseClient(CommunicationProc):
                 sleep(1)
                 continue
 
-        for i in range(10):
+        for i in range(3):
             self.data_handler()
-
         try:
             self.np_socket.close()
         except OSError:
@@ -56,10 +55,10 @@ class AnalyseClient(CommunicationProc):
         matrix = self.stack_matrix()
         mean, std = self.matrix_analytics(matrix)
 
-    def stack_matrix(self, mat_col=100):
-        matrix = self.np_socket.receive(socket_buffer_size=16)  # buffer size must be smaller than vector size
+    def stack_matrix(self, mat_col=100):  # each matrix should be 100 vectors long
+        matrix = self.np_socket.receive(16)  # 16 - buffer size must be smaller than vector size
         for i in range(mat_col - 1):
-            frame = self.np_socket.receive(socket_buffer_size=16)  # buffer size must be smaller than vector size
+            frame = self.np_socket.receive(16)  # 16 - buffer size must be smaller than vector size
             logger.debug("array received:")
             logger.debug(frame)
             matrix = np.vstack((matrix, frame))
@@ -73,6 +72,8 @@ class AnalyseClient(CommunicationProc):
 
 
 class VecGenServer(CommunicationProc):
+    call_times_in_seconds = ThrottleDecorator
+
     def __init__(self, ip, port):
         super().__init__(ip, port)
 
@@ -81,7 +82,9 @@ class VecGenServer(CommunicationProc):
         logger.debug("starting server, waiting for client")
         self.np_socket.startServer(self.ip, self.port)
 
-        self.send_data()
+        for _ in range(10):
+            self.send_data()
+
         logger.info("closing connection")
         try:
             self.np_socket.close()
@@ -89,18 +92,18 @@ class VecGenServer(CommunicationProc):
             logging.error("client already disconnected")
 
     def send_data(self):
-        for vec in data_vector_gen(vector_size=5):
-            logger.debug("sending numpy array:")
-            logger.debug(vec)
+        while True:
+            #logger.debug("sending numpy array:")
+            #logger.debug(vec)
             try:
-                self.send_vector(vec)
-            except RateLimitException:
-                continue
+                _, time = self.send_vector(data_vector_gen().__next__())
+                logger.info(f"sent 1000 vectors in {time!r}  seconds")
             except (ConnectionResetError, ConnectionAbortedError):
                 logging.error("client disconnected")
                 break
 
-    @limits(calls=1, period=0.001)
+    @timer
+    @call_times_in_seconds(1000, 1)
     def send_vector(self, vector):
         self.np_socket.send(vector)
 
