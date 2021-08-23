@@ -1,9 +1,7 @@
-from app import run, init
-import sys
+from app import run
 
 
 def main():
-    init(sys.argv[1:])
     run()
 
 

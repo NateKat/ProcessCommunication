@@ -10,8 +10,9 @@ logger = create_logger()
 class VecGenServer(CommunicationProc):
     call_times_in_seconds = ThrottleDecorator
 
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, noisy=False):
         super().__init__(ip, port)
+        self.noisy = noisy
 
     def run(self):
         self.np_socket = NumpySocket()
