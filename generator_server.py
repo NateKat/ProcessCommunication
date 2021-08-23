@@ -18,8 +18,7 @@ class VecGenServer(CommunicationProc):
         logger.debug("starting server, waiting for client")
         self.np_socket.startServer(self.ip, self.port)
 
-        for _ in range(10):
-            self.send_data()
+        self.send_data()
 
         logger.info("closing connection")
         try:
