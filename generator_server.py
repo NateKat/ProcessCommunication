@@ -19,7 +19,6 @@ class VecGenServer(CommunicationProc):
         self.np_socket.startServer(self.ip, self.port)
 
         self.send_data()
-
         logger.info("closing connection")
         try:
             self.np_socket.close()
@@ -37,16 +36,20 @@ class VecGenServer(CommunicationProc):
         while True:
             yield np.random.normal(size=vector_size)
 
-    def send_data(self):
+    def send_data(self) -> None:
         while True:
             try:
-                _, time = self.send_vector(self.data_vector_gen().__next__())
-                logger.info(f"Send frequency is {1000 / time:.2f}[Hz]")
+                _, time = self.execute_times(1000)
+                logger.debug(f"Send frequency is {1000 / time:.2f}[Hz]")
             except (ConnectionResetError, ConnectionAbortedError):
                 logger.error("client disconnected")
                 break
 
     @timer
+    def execute_times(self, iterations: int) -> None:
+        for i in range(iterations):
+            self.send_vector(self.data_vector_gen().__next__())
+
     @call_times_in_seconds(1000, 1)
     def send_vector(self, vector):
         self.np_socket.send(vector)
