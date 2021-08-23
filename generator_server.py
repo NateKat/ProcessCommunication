@@ -10,12 +10,12 @@ logger = create_logger()
 class VecGenServer(CommunicationProc):
     call_times_in_seconds = ThrottleDecorator
 
-    def __init__(self, ip, port, noisy=False):
+    def __init__(self, ip: str, port: int, noisy: bool = False):
         super().__init__(ip, port)
         self.noisy = noisy
 
     def run(self):
-        self.np_socket = NumpySocket()
+        self.np_socket = NumpySocket(self.noisy)
         logger.debug("starting server, waiting for client")
         self.np_socket.startServer(self.ip, self.port)
 

@@ -7,12 +7,13 @@ logger = create_logger()
 
 
 class NumpySocket:
-    def __init__(self):
+    def __init__(self, noisy: bool = False):
         self.address = 0
         self.port = 0
         self.client_connection = self.client_address = None
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.noisy = noisy
         self.send_seq = 0
         self.recv_seq = 0
         self.vectors_dropped = 0
