@@ -13,6 +13,8 @@ class NumpySocket:
         self.client_connection = self.client_address = None
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.send_seq = 0
+        self.recv_seq = 0
 
     def __del__(self):
         try:
@@ -54,15 +56,14 @@ class NumpySocket:
         self.client_connection = self.client_address = None
         self.socket.close()
 
-    @staticmethod
-    def __pack_frame(frame):
+    def _pack_frame(self, frame: np.ndarray) -> bytearray:
         f = BytesIO()
         np.savez(f, frame=frame)
-
         packet_size = len(f.getvalue())
-        header = '{0}:'.format(packet_size)
-        header = bytes(header.encode())  # prepend length of array
+        header = f"{packet_size}SEQ{self.send_seq}:"
+        header = bytes(header.encode())  # prepend length of array and sequence number
 
+        self.send_seq += 1
         out = bytearray()
         out += header
 
@@ -70,11 +71,22 @@ class NumpySocket:
         out += f.read()
         return out
 
+    def _unpack_frame(self, frame_buffer: bytearray) -> tuple:
+        """
+        Remove the header bytes from the front of frameBuffer
+        leave any remaining bytes in the frameBuffer!
+        :param frame_buffer:
+        :return: tuple of  1. frame length: int 2. send sequence: int 3. frame: bytearray
+        """
+        header_str, _, frame_buffer = frame_buffer.partition(b':')
+        length_str, _, send_seq = header_str.partition(b'SEQ')
+        return int(length_str), int(send_seq), frame_buffer
+
     def send(self, frame):
         if not isinstance(frame, np.ndarray):
             raise TypeError("input frame is not a valid numpy array")
 
-        out = self.__pack_frame(frame)
+        out = self._pack_frame(frame)
 
         socket = self.socket
         if (self.client_connection):
@@ -104,10 +116,7 @@ class NumpySocket:
                 if length is None:
                     if b':' not in frameBuffer:
                         break
-                    # remove the length bytes from the front of frameBuffer
-                    # leave any remaining bytes in the frameBuffer!
-                    length_str, ignored, frameBuffer = frameBuffer.partition(b':')
-                    length = int(length_str)
+                    length, seq, frameBuffer = self._unpack_frame(frameBuffer)
                 if len(frameBuffer) < length:
                     break
                 # split off the full message from the remaining bytes
