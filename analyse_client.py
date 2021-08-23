@@ -72,12 +72,15 @@ class AnalyseClient(CommunicationProc):
         logger.debug(matrix)
         return matrix
 
-    def matrix_handler(self):
-        matrix = self.get_matrix()
-        mean, std = self.matrix_analytics(matrix)
-        return matrix
+    def matrix_analytics(self, matrix: np.ndarray) -> tuple:
+        return np.mean(matrix, axis=0), np.std(matrix, axis=0)
 
-    def matrix_analytics(self, matrix):
-        r1 = np.mean(matrix, axis=0)
-        r2 = np.std(matrix, axis=0)
-        return r1, r2
+    def save_matrix(self, matrix: np.ndarray) -> None:
+        keys = ['matrix', 'mean', 'standard deviation']
+        values = [matrix]
+        values.extend(self.matrix_analytics(matrix))
+        self.data_dict['matrices'].append(dict(zip(keys, values)))
+
+    def matrix_handler(self) -> None:
+        self.save_matrix(self.get_matrix())
+
