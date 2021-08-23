@@ -3,6 +3,7 @@ import numpy as np
 from numpysocket import NumpySocket
 from decorators import timer
 from time import sleep
+import json
 from logger import create_logger
 
 logger = create_logger()
@@ -21,10 +22,9 @@ class AnalyseClient(CommunicationProc):
 
     def init_data_dict(self) -> dict:
         data = dict()
-        data['matrices'] = []  # list of dicts fromkeys(['matrix', 'mean', 'standard deviation'])
         data['communication'] = dict.fromkeys(['rates', 'analytics'])
         data['communication']['rates'] = self.receive_rates  # a series of rates of data acquisition [Hz]: list
-        data['communication']['analytics'] = dict.fromkeys(['mean', 'standard deviation'])
+        data['matrices'] = []  # list of dicts fromkeys(['matrix', 'mean', 'standard deviation'])
         return data
 
     def run(self):
@@ -45,6 +45,15 @@ class AnalyseClient(CommunicationProc):
             self.np_socket.close()
         except OSError:
             logger.error("server already disconnected")
+        self.finalize_and_save_data()
+
+    def finalize_and_save_data(self):
+        keys = ['mean', 'standard deviation']
+        values = list(self.matrix_analytics(np.array(self.receive_rates)))
+        self.data_dict['communication']['analytics'] = dict(zip(keys, values))
+        #print(f"self.data_dict {self.data_dict}")
+        with open('data.json', 'w', encoding='utf-8') as f:
+            json.dump(self.data_dict, f, ensure_ascii=False, indent=4)
 
     def data_handler(self):
         for i in range(10):
@@ -76,7 +85,7 @@ class AnalyseClient(CommunicationProc):
 
     def save_matrix(self, matrix: np.ndarray) -> None:
         keys = ['matrix', 'mean', 'standard deviation']
-        values = [matrix]
+        values = [matrix.tolist()]
         values.extend(self.matrix_analytics(matrix))
         self.data_dict['matrices'].append(dict(zip(keys, values)))
 
