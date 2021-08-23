@@ -15,6 +15,7 @@ class NumpySocket:
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.send_seq = 0
         self.recv_seq = 0
+        self.vectors_dropped = 0
 
     def __del__(self):
         try:
@@ -100,6 +101,17 @@ class NumpySocket:
 
         logger.debug("frame sent")
 
+    def verify_packet_integrity(self, seq: int) -> None:
+        if self.recv_seq == seq - 1:
+            logger.warning("Dropped vector detected")
+            self.vectors_dropped += 1
+            self.recv_seq += 1
+        elif self.recv_seq != seq:
+            logger.error(f"Packet sequence is broken. Expected:{self.recv_seq} got:{seq}, fixing now")
+            self.recv_seq = seq
+            raise Exception
+        self.recv_seq += 1
+
     def receive_vector_frame(self, socket_buffer_size=1024):
         socket = self.socket
         if (self.client_connection):
@@ -117,6 +129,7 @@ class NumpySocket:
                     if b':' not in frameBuffer:
                         break
                     length, seq, frameBuffer = self._unpack_frame(frameBuffer)
+                    self.verify_packet_integrity(seq)
                 if len(frameBuffer) < length:
                     break
                 # split off the full message from the remaining bytes
