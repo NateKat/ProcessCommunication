@@ -13,10 +13,19 @@ class AnalyseClient(CommunicationProc):
         super().__init__(ip, port)
         self.receive_rates = []
         self.columns_in_matrix = columns_in_matrix
+        self.data_dict = self.init_data_dict()
 
     @property
     def current_freq(self) -> float:
         return self.columns_in_matrix / float(self.receive_rates[-1]) if self.receive_rates else 0
+
+    def init_data_dict(self) -> dict:
+        data = dict()
+        data['matrices'] = []  # list of dicts fromkeys(['matrix', 'mean', 'standard deviation'])
+        data['communication'] = dict.fromkeys(['rates', 'analytics'])
+        data['communication']['rates'] = []  # a series of rates of data acquisition [Hz]
+        data['communication']['analytics'] = dict.fromkeys(['mean', 'standard deviation'])
+        return data
 
     def run(self):
         self.np_socket = NumpySocket()
