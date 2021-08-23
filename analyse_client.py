@@ -54,13 +54,17 @@ class AnalyseClient(CommunicationProc):
             np.vstack((matrix, self.np_socket.frame_to_vector(l_frames[i])))
         return matrix
 
-    def matrix_handler(self):
+    def get_matrix(self) -> np.ndarray:
         l_frames, time = self.accumulate_frames(self.columns_in_matrix, [])
         logger.debug(f"Received {self.columns_in_matrix} vectors in {time}  seconds")
         self.receive_rates.append(time)
         matrix = self.frames_to_matrix(l_frames)
         logger.debug("matrix received:")
         logger.debug(matrix)
+        return matrix
+
+    def matrix_handler(self):
+        matrix = self.get_matrix()
         mean, std = self.matrix_analytics(matrix)
         return matrix
 
