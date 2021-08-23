@@ -17,13 +17,13 @@ class AnalyseClient(CommunicationProc):
 
     @property
     def current_freq(self) -> float:
-        return self.columns_in_matrix / float(self.receive_rates[-1]) if self.receive_rates else 0
+        return self.receive_rates[-1] if self.receive_rates else 0
 
     def init_data_dict(self) -> dict:
         data = dict()
         data['matrices'] = []  # list of dicts fromkeys(['matrix', 'mean', 'standard deviation'])
         data['communication'] = dict.fromkeys(['rates', 'analytics'])
-        data['communication']['rates'] = []  # a series of rates of data acquisition [Hz]
+        data['communication']['rates'] = self.receive_rates  # a series of rates of data acquisition [Hz]: list
         data['communication']['analytics'] = dict.fromkeys(['mean', 'standard deviation'])
         return data
 
@@ -66,10 +66,9 @@ class AnalyseClient(CommunicationProc):
     def get_matrix(self) -> np.ndarray:
         l_frames, time = self.accumulate_frames(self.columns_in_matrix, [])
         logger.debug(f"Received {self.columns_in_matrix} vectors in {time}  seconds")
-        self.receive_rates.append(time)
+        self.receive_rates.append(self.columns_in_matrix / time)
         matrix = self.frames_to_matrix(l_frames)
-        logger.debug("matrix received:")
-        logger.debug(matrix)
+        logger.debug(f"matrix received: {matrix}")
         return matrix
 
     def matrix_analytics(self, matrix: np.ndarray) -> tuple:
