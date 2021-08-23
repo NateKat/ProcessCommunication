@@ -38,9 +38,9 @@ class ThrottleDecorator(object):
 
         # Initialise the decorator state.
         self.freq = self.period / self.calls
-        self.start = self.clock()
         self.num_calls = 0
         self.run_time = 0
+        self.start = None
 
     def __call__(self, func):
         """
@@ -64,7 +64,8 @@ class ThrottleDecorator(object):
             :param kwargs: key-worded variable length argument list to the decorated function.
             :raises: RateLimitException
             """
-
+            if not self.start:
+                self.start = self.clock()
             value = func(*args, **kwargs)
             self.num_calls += 1
             self.run_time = self.clock() - self.start
