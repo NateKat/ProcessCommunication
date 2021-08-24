@@ -33,9 +33,9 @@ class VecGenServer(CommunicationProc):
         :param vector_size: vector size: (1 x vector_size)
         :return: yields the next vector for each call
         """
-        np.random.RandomState(seed)
+        gen = np.random.default_rng(seed)
         while True:
-            yield np.random.normal(size=vector_size)
+            yield gen.normal(size=vector_size)
 
     def send_data(self) -> None:
         while True:
