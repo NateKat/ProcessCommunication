@@ -2,6 +2,8 @@ from communication_proc import CommunicationProc
 from numpysocket import NumpySocket
 import numpy as np
 from decorators import timer, ThrottleDecorator
+import asyncio
+import typing
 from logger import create_logger
 
 logger = create_logger()
@@ -13,13 +15,16 @@ class VecGenServer(CommunicationProc):
     def __init__(self, ip: str, port: int, noisy: bool = False):
         super().__init__(ip, port)
         self.noisy = noisy
+        self.loop: typing.Optional[asyncio.AbstractEventLoop] = None
 
     def run(self):
         self.np_socket = NumpySocket(self.noisy)
         logger.debug("starting server, waiting for client")
         self.np_socket.startServer(self.ip, self.port)
+        self.loop = asyncio.get_event_loop()
 
-        self.send_data()
+        self.loop.create_task(self.np_socket.emulate_noise())
+        self.loop.run_until_complete(self.send_data())
         logger.info("closing connection")
         try:
             self.np_socket.close()
@@ -37,18 +42,20 @@ class VecGenServer(CommunicationProc):
         while True:
             yield gen.normal(size=vector_size)
 
-    def send_data(self) -> None:
+    async def send_data(self) -> None:
         while True:
             try:
-                _, time = self.execute_times(1000)
+                ret, time = self.execute_times(1000)
+                await ret
                 logger.debug(f"Send frequency is {1000 / time:.2f}[Hz]")
             except (ConnectionResetError, ConnectionAbortedError):
                 logger.error("client disconnected")
                 break
 
     @timer
-    def execute_times(self, iterations: int) -> None:
+    async def execute_times(self, iterations: int) -> None:
         for i in range(iterations):
+            await asyncio.sleep(0)  # zero time Preemption
             self.send_vector(self.data_vector_gen().__next__())
 
     @call_times_in_seconds(1000, 1)

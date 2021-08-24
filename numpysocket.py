@@ -1,6 +1,8 @@
 import socket
 import numpy as np
+import asyncio
 from io import BytesIO
+import time
 from logger import create_logger
 
 logger = create_logger()
@@ -14,6 +16,8 @@ class NumpySocket:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.noisy = noisy
+        self.start_time = time.perf_counter() if self.noisy else None
+        self.gen = np.random.default_rng(seed=100)
         self.send_seq = 0
         self.recv_seq = 0
         self.vectors_dropped = 0
@@ -83,6 +87,16 @@ class NumpySocket:
         header_str, _, frame_buffer = frame_buffer.partition(b':')
         length_str, _, send_seq = header_str.partition(b'SEQ')
         return int(length_str), int(send_seq), frame_buffer
+
+    async def emulate_noise(self) -> None:
+        if not self.noisy:
+            return
+        while True:
+            s = self.gen.uniform(2, 3)
+            start = time.perf_counter()
+            await asyncio.sleep(s)
+            self.send_seq += 1
+            await asyncio.sleep(3 - (time.perf_counter() - start))
 
     def send(self, frame):
         if not isinstance(frame, np.ndarray):
