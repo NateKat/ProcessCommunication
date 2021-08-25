@@ -55,23 +55,20 @@ class ThrottleDecorator(object):
         def wrapper(*args, **kwargs):
             """
             Extend the behaviour of the decorated function, forwarding function
-            invocations previously called no sooner than a specified period of
-            time. The decorator will raise an exception if the function cannot
-            be called so the caller may implement a retry strategy such as an
-            exponential backoff.
+            invocations previously called no sooner than a specified period of time.
 
             :param args: non-keyword variable length argument list to the decorated function.
             :param kwargs: key-worded variable length argument list to the decorated function.
-            :raises: RateLimitException
             """
             if not self.start:
                 self.start = self.clock()
             value = func(*args, **kwargs)
             self.num_calls += 1
-            self.run_time = self.clock() - self.start
-            if self.run_time / self.num_calls < self.freq:
-                time.sleep(self.num_calls * self.freq - self.run_time)
+            try:
+                time.sleep(self.num_calls * self.freq - (self.clock() - self.start))
+            except ValueError:
+                pass  # Ignore unnecessary sleeping (negative time period)
 
-            logger.debug(f"Finished {func.__name__!r} in average of {self.run_time / self.num_calls:.3f} secs")
+            logger.debug(f"{func.__name__!r} ran in average of {(self.clock() - self.start) / self.num_calls:.3f} secs")
             return value
         return wrapper
