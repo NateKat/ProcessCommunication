@@ -70,10 +70,7 @@ class AnalyseClient(CommunicationProc):
         return [self.receive_vector() for _ in range(num_of_frames)]
 
     def frames_to_matrix(self, l_frames: list) -> np.ndarray:
-        matrix = self.np_socket.frame_to_vector(l_frames[0])
-        for i in range(1, len(l_frames)):
-            np.vstack((matrix, self.np_socket.frame_to_vector(l_frames[i])))
-        return matrix
+        return np.vstack([self.np_socket.frame_to_vector(frame) for frame in l_frames])
 
     def get_matrix(self) -> np.ndarray:
         l_frames, time = self.accumulate_frames(self.columns_in_matrix)
@@ -88,8 +85,7 @@ class AnalyseClient(CommunicationProc):
 
     def save_matrix(self, matrix: np.ndarray) -> None:
         keys = ['matrix', 'mean', 'standard deviation']
-        values = [matrix.tolist()]
-        values.extend(self.matrix_analytics(matrix))
+        values = [arr.tolist() for arr in [matrix, *self.matrix_analytics(matrix)]]
         self.data_dict['matrices'].append(dict(zip(keys, values)))
 
     def matrix_handler(self) -> None:
