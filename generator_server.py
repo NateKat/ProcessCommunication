@@ -54,9 +54,11 @@ class VecGenServer(CommunicationProc):
 
     @timer
     async def execute_times(self, iterations: int) -> None:
-        for i in range(iterations):
+        for i, vec in enumerate(self.data_vector_gen()):
             await asyncio.sleep(0)  # zero time Preemption
-            self.send_vector(self.data_vector_gen().__next__())
+            self.send_vector(vec)
+            if i == iterations:
+                break
 
     @call_times_in_seconds(1000, 1)
     def send_vector(self, vector):
