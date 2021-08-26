@@ -66,10 +66,8 @@ class AnalyseClient(CommunicationProc):
         return self.np_socket.receive_vector_frame(16)
 
     @timer
-    def accumulate_frames(self, num_of_frames: int, frame_list: list) -> list:
-        for i in range(num_of_frames):
-            frame_list.append(self.receive_vector())
-        return frame_list
+    def accumulate_frames(self, num_of_frames: int) -> list:
+        return [self.receive_vector() for _ in range(num_of_frames)]
 
     def frames_to_matrix(self, l_frames: list) -> np.ndarray:
         matrix = self.np_socket.frame_to_vector(l_frames[0])
@@ -78,7 +76,7 @@ class AnalyseClient(CommunicationProc):
         return matrix
 
     def get_matrix(self) -> np.ndarray:
-        l_frames, time = self.accumulate_frames(self.columns_in_matrix, [])
+        l_frames, time = self.accumulate_frames(self.columns_in_matrix)
         logger.debug(f"Received {self.columns_in_matrix} vectors in {time}  seconds")
         self.receive_rates.append(self.columns_in_matrix / time)
         matrix = self.frames_to_matrix(l_frames)
