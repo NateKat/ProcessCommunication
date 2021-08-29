@@ -17,7 +17,7 @@ class VecGenServer(CommunicationProc):
         self._noisy = noisy
         self._loop: typing.Optional[asyncio.AbstractEventLoop] = None
 
-    def run(self):
+    def run(self) -> None:
         self.np_socket = NumpySocket(self._noisy)
         logger.debug("starting server, waiting for client")
         self.np_socket.start_server(self.ip, self.port)
@@ -61,5 +61,5 @@ class VecGenServer(CommunicationProc):
                 break
 
     @call_times_in_seconds(1000, 1)
-    def send_vector(self, vector):
+    def send_vector(self, vector: np.ndarray) -> None:
         self.np_socket.send(vector)

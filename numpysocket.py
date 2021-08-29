@@ -22,7 +22,7 @@ class NumpySocket:
         self._vectors_dropped = 0
         self.data = bytearray()
 
-    def __del__(self):
+    def __del__(self) -> None:
         try:
             self.client_connection.shutdown(socket.SHUT_WR)
             self._socket.shutdown(socket.SHUT_WR)

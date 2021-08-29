@@ -31,7 +31,7 @@ class AnalyseClient(CommunicationProc):
         data['matrices'] = []  # list of dicts fromkeys(['matrix', 'mean', 'standard deviation'])
         return data
 
-    def run(self):
+    def run(self) -> None:
         self.np_socket = NumpySocket()
         while True:
             try:
@@ -86,7 +86,7 @@ class AnalyseClient(CommunicationProc):
             queue.task_done()
             await asyncio.sleep(0.1)
 
-    def finalize_and_save_data(self):
+    def finalize_and_save_data(self) -> None:
         keys = ['mean', 'standard deviation']
         values = list(self.matrix_analytics(np.array(self._receive_rates)))
         self._data_dict['communication']['analytics'] = dict(zip(keys, values))
