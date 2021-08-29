@@ -20,6 +20,7 @@ class NumpySocket:
         self._send_seq = 0
         self._recv_seq = 0
         self._vectors_dropped = 0
+        self.data = bytearray()
 
     def __del__(self):
         try:
@@ -129,33 +130,20 @@ class NumpySocket:
         self._vectors_dropped = 0
         return freq
 
-    def receive_vector_frame(self, socket_buffer_size: int = 1024) -> bytearray:
+    def receive_vector_frame(self, socket_buffer_size: int = 4096) -> bytearray:
         np_socket = self._socket
         if self.client_connection:
             np_socket = self.client_connection
 
-        length = None
-        frame_buffer = bytearray()
-        while True:
-            data = np_socket.recv(socket_buffer_size)
-            frame_buffer += data
-            if len(frame_buffer) == length:
-                break
-            while True:
-                if length is None:
-                    if b':' not in frame_buffer:
-                        break
-                    length, seq, frame_buffer = self._unpack_frame(frame_buffer)
-                    self.verify_packet_integrity(seq)
-                if len(frame_buffer) < length:
-                    break
-                # split off the full message from the remaining bytes
-                # leave any remaining bytes in the frame_buffer!
-                frame_buffer = frame_buffer[length:]
-                length = None
-                break
+        while len(self.data) < socket_buffer_size:
+            self.data += np_socket.recv(socket_buffer_size)
 
-        return frame_buffer
+        length, seq, frame_buffer = self._unpack_frame(self.data)
+
+        self.verify_packet_integrity(seq)
+        self.data = frame_buffer[length:]
+
+        return frame_buffer[:length]
 
     def frame_to_vector(self, frame_buffer: bytearray) -> np.ndarray:
         frame = np.load(BytesIO(frame_buffer))['frame']

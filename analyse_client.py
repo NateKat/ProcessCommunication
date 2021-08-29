@@ -94,7 +94,7 @@ class AnalyseClient(CommunicationProc):
             json.dump(self._data_dict, f, ensure_ascii=False, indent=4)
 
     def receive_vector(self) -> bytearray:
-        return self.np_socket.receive_vector_frame(16)
+        return self.np_socket.receive_vector_frame(1024)
 
     def frames_to_matrix(self, l_frames: list) -> np.ndarray:
         return np.vstack([self.np_socket.frame_to_vector(frame) for frame in l_frames])
