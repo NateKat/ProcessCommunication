@@ -20,7 +20,7 @@ class VecGenServer(CommunicationProc):
     def run(self):
         self.np_socket = NumpySocket(self._noisy)
         logger.debug("starting server, waiting for client")
-        self.np_socket.startServer(self.ip, self.port)
+        self.np_socket.start_server(self.ip, self.port)
         self._loop = asyncio.get_event_loop()
 
         self._loop.create_task(self.np_socket.emulate_noise())

@@ -33,7 +33,7 @@ class NumpySocket:
 
         self.close()
 
-    def startServer(self, address, port):
+    def start_server(self, address: str, port: int) -> None:
         self.address = address
         self.port = port
 
@@ -44,7 +44,7 @@ class NumpySocket:
         self.client_connection, self.client_address = self.socket.accept()
         logger.debug(f"connected to: {self.client_address[0]}")
 
-    def startClient(self, address, port):
+    def start_client(self, address: str, port: int) -> None:
         self.address = address
         self.port = port
         try:
@@ -52,9 +52,9 @@ class NumpySocket:
             logger.debug(f"Connected to {self.address} on port {self.port}")
         except socket.error as err:
             logger.error(f"Connection to {self.address} on port {self.port} failed")
-            raise
+            raise err
 
-    def close(self):
+    def close(self) -> None:
         try:
             self.client_connection.close()
         except AttributeError:
@@ -98,18 +98,18 @@ class NumpySocket:
             self.send_seq += 1
             await asyncio.sleep(3 - (time.perf_counter() - start))
 
-    def send(self, frame):
+    def send(self, frame: np.ndarray) -> None:
         if not isinstance(frame, np.ndarray):
             raise TypeError("input frame is not a valid numpy array")
 
         out = self._pack_frame(frame)
 
-        socket = self.socket
-        if (self.client_connection):
-            socket = self.client_connection
+        np_socket = self.socket
+        if self.client_connection:
+            np_socket = self.client_connection
 
         try:
-            socket.sendall(out)
+            np_socket.sendall(out)
         except BrokenPipeError:
             logger.error("connection broken")
             raise
@@ -132,35 +132,35 @@ class NumpySocket:
         self.vectors_dropped = 0
         return freq
 
-    def receive_vector_frame(self, socket_buffer_size=1024):
-        socket = self.socket
-        if (self.client_connection):
-            socket = self.client_connection
+    def receive_vector_frame(self, socket_buffer_size: int = 1024) -> bytearray:
+        np_socket = self.socket
+        if self.client_connection:
+            np_socket = self.client_connection
 
         length = None
-        frameBuffer = bytearray()
+        frame_buffer = bytearray()
         while True:
-            data = socket.recv(socket_buffer_size)
-            frameBuffer += data
-            if len(frameBuffer) == length:
+            data = np_socket.recv(socket_buffer_size)
+            frame_buffer += data
+            if len(frame_buffer) == length:
                 break
             while True:
                 if length is None:
-                    if b':' not in frameBuffer:
+                    if b':' not in frame_buffer:
                         break
-                    length, seq, frameBuffer = self._unpack_frame(frameBuffer)
+                    length, seq, frame_buffer = self._unpack_frame(frame_buffer)
                     self.verify_packet_integrity(seq)
-                if len(frameBuffer) < length:
+                if len(frame_buffer) < length:
                     break
                 # split off the full message from the remaining bytes
-                # leave any remaining bytes in the frameBuffer!
-                frameBuffer = frameBuffer[length:]
+                # leave any remaining bytes in the frame_buffer!
+                frame_buffer = frame_buffer[length:]
                 length = None
                 break
 
-        return frameBuffer
+        return frame_buffer
 
-    def frame_to_vector(self, frame_buffer: bytearray):
+    def frame_to_vector(self, frame_buffer: bytearray) -> np.ndarray:
         frame = np.load(BytesIO(frame_buffer))['frame']
         logger.debug("frame received")
         return frame

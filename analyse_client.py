@@ -34,7 +34,7 @@ class AnalyseClient(CommunicationProc):
         self.np_socket = NumpySocket()
         while True:
             try:
-                self.np_socket.startClient(self.ip, self.port)
+                self.np_socket.start_client(self.ip, self.port)
                 logger.debug("connected to server")
                 break
             except ConnectionRefusedError:
