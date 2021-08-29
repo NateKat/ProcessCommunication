@@ -14,17 +14,17 @@ class VecGenServer(CommunicationProc):
 
     def __init__(self, ip: str, port: int, noisy: bool = False):
         super().__init__(ip, port)
-        self.noisy = noisy
-        self.loop: typing.Optional[asyncio.AbstractEventLoop] = None
+        self._noisy = noisy
+        self._loop: typing.Optional[asyncio.AbstractEventLoop] = None
 
     def run(self):
-        self.np_socket = NumpySocket(self.noisy)
+        self.np_socket = NumpySocket(self._noisy)
         logger.debug("starting server, waiting for client")
         self.np_socket.startServer(self.ip, self.port)
-        self.loop = asyncio.get_event_loop()
+        self._loop = asyncio.get_event_loop()
 
-        self.loop.create_task(self.np_socket.emulate_noise())
-        self.loop.run_until_complete(self.send_data())
+        self._loop.create_task(self.np_socket.emulate_noise())
+        self._loop.run_until_complete(self.send_data())
         logger.info("closing connection")
         try:
             self.np_socket.close()

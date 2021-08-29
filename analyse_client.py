@@ -13,20 +13,20 @@ logger = create_logger()
 class AnalyseClient(CommunicationProc):
     call_times_in_seconds = ThrottleDecorator
 
-    def __init__(self, ip, port, columns_in_matrix=100):
+    def __init__(self, ip, port, rows_in_matrix=100):
         super().__init__(ip, port)
-        self.receive_rates = []
-        self.columns_in_matrix = columns_in_matrix
-        self.data_dict = self.init_data_dict()
+        self._receive_rates = []
+        self._rows_in_matrix = rows_in_matrix
+        self._data_dict = self.init_data_dict()
 
     @property
     def current_freq(self) -> float:
-        return self.receive_rates[-1] if self.receive_rates else 0
+        return self._receive_rates[-1] if self._receive_rates else 0
 
     def init_data_dict(self) -> dict:
         data = dict()
         data['communication'] = dict.fromkeys(['rates', 'analytics'])
-        data['communication']['rates'] = self.receive_rates  # a series of rates of data acquisition [Hz]: list
+        data['communication']['rates'] = self._receive_rates  # a series of rates of data acquisition [Hz]: list
         data['matrices'] = []  # list of dicts fromkeys(['matrix', 'mean', 'standard deviation'])
         return data
 
@@ -68,10 +68,10 @@ class AnalyseClient(CommunicationProc):
         return [self.get_frames_in_matrix() for _ in range(num_of_matrices)]
 
     async def producer(self, queue: asyncio.queues.Queue, matrix_batch_size: int = 10) -> None:
-        num_of_vectors = self.columns_in_matrix * matrix_batch_size
+        num_of_vectors = self._rows_in_matrix * matrix_batch_size
         for _ in range(20):
             frames_list, time = self.get_batch_frames(matrix_batch_size)
-            self.receive_rates.append(self.np_socket.calculate_frequency(num_of_vectors, time))
+            self._receive_rates.append(self.np_socket.calculate_frequency(num_of_vectors, time))
             print(f"Receive frequency:{self.current_freq:.2f}[Hz]")
             for matrix in frames_list:
                 await queue.put(matrix)
@@ -85,10 +85,10 @@ class AnalyseClient(CommunicationProc):
 
     def finalize_and_save_data(self):
         keys = ['mean', 'standard deviation']
-        values = list(self.matrix_analytics(np.array(self.receive_rates)))
-        self.data_dict['communication']['analytics'] = dict(zip(keys, values))
+        values = list(self.matrix_analytics(np.array(self._receive_rates)))
+        self._data_dict['communication']['analytics'] = dict(zip(keys, values))
         with open('data.json', 'w', encoding='utf-8') as f:
-            json.dump(self.data_dict, f, ensure_ascii=False, indent=4)
+            json.dump(self._data_dict, f, ensure_ascii=False, indent=4)
 
     def receive_vector(self) -> bytearray:
         return self.np_socket.receive_vector_frame(16)
@@ -97,7 +97,7 @@ class AnalyseClient(CommunicationProc):
         return np.vstack([self.np_socket.frame_to_vector(frame) for frame in l_frames])
 
     def get_frames_in_matrix(self) -> list:
-        return [self.receive_vector() for _ in range(self.columns_in_matrix)]
+        return [self.receive_vector() for _ in range(self._rows_in_matrix)]
 
     def matrix_analytics(self, matrix: np.ndarray) -> tuple:
         return np.mean(matrix, axis=0), np.std(matrix, axis=0)
@@ -107,4 +107,4 @@ class AnalyseClient(CommunicationProc):
         logger.debug(f"matrix received: {matrix}")
         keys = ['matrix', 'mean', 'standard deviation']
         values = [arr.tolist() for arr in [matrix, *self.matrix_analytics(matrix)]]
-        self.data_dict['matrices'].append(dict(zip(keys, values)))
+        self._data_dict['matrices'].append(dict(zip(keys, values)))
