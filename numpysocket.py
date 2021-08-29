@@ -113,8 +113,6 @@ class NumpySocket:
             logger.error("connection broken")
             raise
 
-        logger.debug("frame sent")
-
     def verify_packet_integrity(self, seq: int) -> None:
         if self._recv_seq == seq - 1:
             logger.warning("Dropped vector detected")

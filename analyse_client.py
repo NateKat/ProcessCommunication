@@ -53,10 +53,12 @@ class AnalyseClient(CommunicationProc):
         queue = asyncio.Queue()
 
         # Fire up producers and consumers
+        logger.debug(f"Starting: {num_producers} producers, {num_consumers} consumers")
         producers = [asyncio.create_task(self.producer(queue)) for _ in range(num_producers)]
         consumers = [asyncio.create_task(self.consumer(queue)) for _ in range(num_consumers)]
 
         await asyncio.gather(*producers)  # wait for the producers to finish
+        logger.debug(f"Producers done")
         await queue.join()  # wait for the remaining tasks to be processed
 
         # Cancel the consumers, which are now idle
@@ -72,7 +74,7 @@ class AnalyseClient(CommunicationProc):
         for _ in range(20):
             frames_list, time = self.get_batch_frames(matrix_batch_size)
             self._receive_rates.append(self.np_socket.calculate_frequency(num_of_vectors, time))
-            print(f"Receive frequency:{self.current_freq:.2f}[Hz]")
+            logger.info(f"Receive frequency: {self.current_freq:.2f}[Hz]")
             for matrix in frames_list:
                 await queue.put(matrix)
 
