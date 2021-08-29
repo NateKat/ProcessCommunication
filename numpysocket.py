@@ -13,19 +13,18 @@ class NumpySocket:
         self.address = 0
         self.port = 0
         self.client_connection = self.client_address = None
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.noisy = noisy
-        self.start_time = time.perf_counter() if self.noisy else None
-        self.gen = np.random.default_rng(seed=100)
-        self.send_seq = 0
-        self.recv_seq = 0
-        self.vectors_dropped = 0
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._noisy = noisy
+        self._gen = np.random.default_rng(seed=100)
+        self._send_seq = 0
+        self._recv_seq = 0
+        self._vectors_dropped = 0
 
     def __del__(self):
         try:
             self.client_connection.shutdown(socket.SHUT_WR)
-            self.socket.shutdown(socket.SHUT_WR)
+            self._socket.shutdown(socket.SHUT_WR)
         except (AttributeError, OSError):
             pass
         except Exception as e:
@@ -37,18 +36,18 @@ class NumpySocket:
         self.address = address
         self.port = port
 
-        self.socket.bind((self.address, self.port))
-        self.socket.listen(1)
+        self._socket.bind((self.address, self.port))
+        self._socket.listen(1)
 
         logger.debug("waiting for a connection")
-        self.client_connection, self.client_address = self.socket.accept()
+        self.client_connection, self.client_address = self._socket.accept()
         logger.debug(f"connected to: {self.client_address[0]}")
 
     def start_client(self, address: str, port: int) -> None:
         self.address = address
         self.port = port
         try:
-            self.socket.connect((self.address, self.port))
+            self._socket.connect((self.address, self.port))
             logger.debug(f"Connected to {self.address} on port {self.port}")
         except socket.error as err:
             logger.error(f"Connection to {self.address} on port {self.port} failed")
@@ -60,16 +59,16 @@ class NumpySocket:
         except AttributeError:
             pass
         self.client_connection = self.client_address = None
-        self.socket.close()
+        self._socket.close()
 
     def _pack_frame(self, frame: np.ndarray) -> bytearray:
         f = BytesIO()
         np.savez(f, frame=frame)
         packet_size = len(f.getvalue())
-        header = f"{packet_size}SEQ{self.send_seq}:"
+        header = f"{packet_size}SEQ{self._send_seq}:"
         header = bytes(header.encode())  # prepend length of array and sequence number
 
-        self.send_seq += 1
+        self._send_seq += 1
         out = bytearray()
         out += header
 
@@ -89,13 +88,13 @@ class NumpySocket:
         return int(length_str), int(send_seq), frame_buffer
 
     async def emulate_noise(self) -> None:
-        if not self.noisy:
+        if not self._noisy:
             return
         while True:
-            s = self.gen.uniform(2, 3)
+            s = self._gen.uniform(2, 3)
             start = time.perf_counter()
             await asyncio.sleep(s)
-            self.send_seq += 1
+            self._send_seq += 1
             await asyncio.sleep(3 - (time.perf_counter() - start))
 
     def send(self, frame: np.ndarray) -> None:
@@ -104,7 +103,7 @@ class NumpySocket:
 
         out = self._pack_frame(frame)
 
-        np_socket = self.socket
+        np_socket = self._socket
         if self.client_connection:
             np_socket = self.client_connection
 
@@ -117,23 +116,23 @@ class NumpySocket:
         logger.debug("frame sent")
 
     def verify_packet_integrity(self, seq: int) -> None:
-        if self.recv_seq == seq - 1:
+        if self._recv_seq == seq - 1:
             logger.warning("Dropped vector detected")
-            self.vectors_dropped += 1
-            self.recv_seq += 1
-        elif self.recv_seq != seq:
-            logger.error(f"Packet sequence is broken. Expected:{self.recv_seq} got:{seq}, fixing now")
-            self.recv_seq = seq
+            self._vectors_dropped += 1
+            self._recv_seq += 1
+        elif self._recv_seq != seq:
+            logger.error(f"Packet sequence is broken. Expected:{self._recv_seq} got:{seq}, fixing now")
+            self._recv_seq = seq
             raise Exception
-        self.recv_seq += 1
+        self._recv_seq += 1
 
     def calculate_frequency(self, num_of_vectors: int, time_sec: float) -> float:
-        freq = (num_of_vectors + self.vectors_dropped) / time_sec
-        self.vectors_dropped = 0
+        freq = (num_of_vectors + self._vectors_dropped) / time_sec
+        self._vectors_dropped = 0
         return freq
 
     def receive_vector_frame(self, socket_buffer_size: int = 1024) -> bytearray:
-        np_socket = self.socket
+        np_socket = self._socket
         if self.client_connection:
             np_socket = self.client_connection
 
