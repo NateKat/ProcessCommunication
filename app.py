@@ -7,7 +7,10 @@ parser = argparse.ArgumentParser(description='Two processes will communicate ove
                                              '"data" vectors should be accumulated in the second process in a matrix. '
                                              'Some simple statistics will be computed (across the "temporal" dimension)'
                                              '. Results are saved to a file')
-parser.add_argument('-n', '--noisy-mode', action='store_true', default=False)
+parser.add_argument('-n', '--noisy-mode', action='store_true', default=False, help="Vectors are randomly dropped "
+                                                                                   "(mimicking packet loss)")
+parser.add_argument('-r', '--vectors-to-receive', type=int, default=20, help="Number of vectors to "
+                                                                             "accumulate [thousands]")
 
 
 def run():
@@ -15,7 +18,7 @@ def run():
     args = parser.parse_args()
 
     ps = VecGenServer(default_ip, default_port, args.noisy_mode)
-    pc = AnalyseClient(default_ip, default_port)
+    pc = AnalyseClient(default_ip, default_port, args.vectors_to_receive)
 
     ps.start()
     pc.start()

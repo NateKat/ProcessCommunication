@@ -13,10 +13,11 @@ logger = create_logger()
 class AnalyseClient(CommunicationProc):
     call_times_in_seconds = ThrottleDecorator
 
-    def __init__(self, ip, port, rows_in_matrix=100):
+    def __init__(self, ip, port, num_of_vectors_k, rows_in_matrix=100):
         super().__init__(ip, port)
         self._receive_rates = []
         self._rows_in_matrix = rows_in_matrix
+        self._num_of_vectors_k = num_of_vectors_k
         self._data_dict = self.init_data_dict()
 
     @property
@@ -71,7 +72,7 @@ class AnalyseClient(CommunicationProc):
 
     async def producer(self, queue: asyncio.queues.Queue, matrix_batch_size: int = 10) -> None:
         num_of_vectors = self._rows_in_matrix * matrix_batch_size
-        for _ in range(20):
+        for _ in range(self._num_of_vectors_k):
             frames_list, time = self.get_batch_frames(matrix_batch_size)
             self._receive_rates.append(self.np_socket.calculate_frequency(num_of_vectors, time))
             logger.info(f"Receive frequency: {self.current_freq:.2f}[Hz]")
