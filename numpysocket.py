@@ -127,6 +127,11 @@ class NumpySocket:
             raise Exception
         self.recv_seq += 1
 
+    def calculate_frequency(self, num_of_vectors: int, time_sec: float) -> float:
+        freq = (num_of_vectors + self.vectors_dropped) / time_sec
+        self.vectors_dropped = 0
+        return freq
+
     def receive_vector_frame(self, socket_buffer_size=1024):
         socket = self.socket
         if (self.client_connection):

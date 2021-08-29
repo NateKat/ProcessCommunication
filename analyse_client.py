@@ -68,9 +68,10 @@ class AnalyseClient(CommunicationProc):
         return [self.get_frames_in_matrix() for _ in range(num_of_matrices)]
 
     async def producer(self, queue: asyncio.queues.Queue, matrix_batch_size: int = 10) -> None:
+        num_of_vectors = self.columns_in_matrix * matrix_batch_size
         for _ in range(20):
             frames_list, time = self.get_batch_frames(matrix_batch_size)
-            self.receive_rates.append(self.columns_in_matrix * matrix_batch_size / time)
+            self.receive_rates.append(self.np_socket.calculate_frequency(num_of_vectors, time))
             print(f"Receive frequency:{self.current_freq:.2f}[Hz]")
             for matrix in frames_list:
                 await queue.put(matrix)
